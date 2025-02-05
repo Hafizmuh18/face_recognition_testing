@@ -1,0 +1,21 @@
+# templates/index.html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Face Recognition Attendance</title>
+</head>
+<body>
+    <h1>Face Recognition Attendance System</h1>
+    <button onclick="recognizeFace()">Capture & Recognize</button>
+    <p id="message"></p>
+    <script>
+        function recognizeFace() {
+            fetch('/recognize/')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('message').innerText = data.message;
+            });
+        }
+    </script>
+</body>
+</html>

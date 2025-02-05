@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        video { border: 2px solid black; width: 50%; }
+        canvas { display: none; }
+        #recognized-name { font-size: 20px; font-weight: bold; margin-top: 20px; }
+    </style>
+    <script>
+        function getCSRFToken() {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.startsWith('csrftoken=')) {
+                        cookieValue = cookie.substring('csrftoken='.length, cookie.length);
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</head>
+<body>
+    <h2>Face Recognition System</h2>
+
+    <video id="video" autoplay></video>
+    <canvas id="canvas"></canvas>
+    <p id="recognized-name">Recognized Name: <span id="name">Waiting...</span></p>
+
+    <script>
+        const video = document.getElementById("video");
+        const canvas = document.getElementById("canvas");
+        const nameDisplay = document.getElementById("name");
+
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+            } catch (error) {
+                console.error("Error accessing camera:", error);
+            }
+        }
+
+        function captureFrame() {
+            const context = canvas.getContext("2d");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const imageData = canvas.toDataURL("image/jpeg");
+            const csrfToken = getCSRFToken();
+
+            fetch("/recognize_face/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-CSRFToken": csrfToken  // ✅ Fixes CSRF issue
+                },
+                body: `image=${encodeURIComponent(imageData)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "success") {
+                    nameDisplay.innerText = data.message;
+                } else {
+                    nameDisplay.innerText = "Unknown";
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        }
+
+        startCamera();
+        setInterval(captureFrame, 3000); // Capture image every 3 seconds
+    </script>
+</body>
+</html>
