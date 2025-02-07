@@ -1,20 +1,68 @@
-# templates/index.html
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Face Recognition Attendance</title>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+    <style>
+        #camera {
+            width: 320px;
+            height: auto;
+            border: 2px solid #000;
+        }
+    </style>
 </head>
 <body>
     <h1>Face Recognition Attendance System</h1>
-    <button onclick="recognizeFace()">Capture & Recognize</button>
-    <p id="message"></p>
+
+    <!-- Camera Stream -->
+    <video id="camera" autoplay></video>
+    <button onclick="captureImage()">Recognize Face</button>
+
     <script>
-        function recognizeFace() {
-            fetch('/recognize/')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('message').innerText = data.message;
+        const video = document.getElementById('camera');
+
+        // Open the camera stream
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.log('Error accessing the camera: ', err);
             });
+
+            function captureImage() {
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                canvas.toBlob(blob => {
+                    let formData = new FormData();
+                    formData.append('image', blob, 'snapshot.jpg');
+
+                    fetch('/recognize/', {
+                        method: 'POST',
+                        body: formData,
+                        headers: { 'X-CSRFToken': getCSRFToken() }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            // Use the redirect URL from the server response
+                            window.location.href = data.redirect_url;
+                        } else {
+                            alert(data.message);
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+                }, 'image/jpeg');
+            }
+
+
+        function getCSRFToken() {
+            return document.cookie.split('; ').find(row => row.startsWith('csrftoken=')).split('=')[1];
         }
     </script>
 </body>
